@@ -43,6 +43,12 @@
 			}
 		},
 		{
+			"path": "pages/user/history",
+			"style": {
+				"navigationBarTitleText": "填报历史"
+			}
+		},
+		{
 			"path": "pages/user/about",
 			"style": {
 				"navigationBarTitleText": "关于我们"

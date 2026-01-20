@@ -20,7 +20,7 @@
         <view class="num">{{ userStore.points }}</view>
         <view class="label">当前积分</view>
       </view>
-      <view class="stat-item">
+      <view class="stat-item" @click="navigateTo('history')">
         <view class="num">{{ userStore.reportCount }}</view>
         <view class="label">累计上报</view>
       </view>
@@ -92,6 +92,10 @@ const navigateTo = (path) => {
   
   if (path === 'record') {
     path = '/pages/user/record'
+  }
+  
+  if (path === 'history') {
+    path = '/pages/user/history'
   }
   
   uni.navigateTo({
