@@ -4,7 +4,7 @@ import { request } from '@/utils/request'
 export const useUserStore = defineStore('user', {
   state: () => ({
     userInfo: null,
-    token: null,
+    token: uni.getStorageSync('token') || null,
     points: 0,
     reportCount: 0,
     weeklyRank: 0
@@ -13,42 +13,69 @@ export const useUserStore = defineStore('user', {
     isLoggedIn: (state) => !!state.token
   },
   actions: {
-    login(provider = 'weixin') {
-      return new Promise((resolve, reject) => {
-        uni.login({
-          provider: 'weixin',
-          success: async (loginRes) => {
-            try {
-              // Call backend login API
-              const res = await request({ 
-                url: '/wechat/login', 
-                method: 'POST', 
-                data: { 
-                  // username/password is no longer needed for this endpoint
-                  // username: 'admin', 
-                  // password: 'admin123',
-                  code: loginRes.code, 
-                  uuid: '123456' 
-                } 
-              })
-              
-              if (res.code === 200) {
-                this.token = res.token
-                uni.setStorageSync('token', this.token)
-                await this.getUserInfo()
-                resolve(this.userInfo)
-              } else {
-                reject(res.msg)
-              }
-            } catch (e) {
-              reject(e)
+    login(payload) {
+      if (payload && payload.username && payload.password) {
+        // 账号密码登录
+        return new Promise(async (resolve, reject) => {
+          try {
+            const res = await request({ 
+              url: '/login', 
+              method: 'POST', 
+              data: {
+                username: payload.username,
+                password: payload.password,
+                code: payload.code,
+                uuid: payload.uuid
+              } 
+            })
+            
+            if (res.code === 200) {
+              this.token = res.token
+              uni.setStorageSync('token', this.token)
+              await this.getUserInfo()
+              resolve(this.userInfo)
+            } else {
+              reject(res.msg)
             }
-          },
-          fail: (err) => {
-            reject(err)
+          } catch (e) {
+            reject(e)
           }
         })
-      })
+      } else {
+        // 微信登录
+        return new Promise((resolve, reject) => {
+          uni.login({
+            provider: 'weixin',
+            success: async (loginRes) => {
+              try {
+                // Call backend login API
+                const res = await request({ 
+                  url: '/wechat/login', 
+                  method: 'POST', 
+                  data: { 
+                    code: loginRes.code, 
+                    uuid: '123456' 
+                  } 
+                })
+                
+                if (res.code === 200) {
+                  this.token = res.token
+                  uni.setStorageSync('token', this.token)
+                  await this.getUserInfo()
+                  resolve(this.userInfo)
+                } else {
+                  reject(res.msg)
+                }
+              } catch (e) {
+                reject(e)
+              }
+            },
+            fail: (err) => {
+              reject(err)
+            }
+          })
+        })
+      }
     },
     async getUserInfo() {
       try {
@@ -74,6 +101,11 @@ export const useUserStore = defineStore('user', {
     },
     updateProfile(data) {
       this.userInfo = { ...this.userInfo, ...data }
+    },
+    async init() {
+      if (this.token) {
+        await this.getUserInfo()
+      }
     }
   }
 })

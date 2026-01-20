@@ -2,62 +2,44 @@
   <view class="container login-page">
     <view class="logo-box">
       <image src="/static/logo.png" mode="widthFix" class="logo"></image>
-      <!-- <text class="title">铲泡屎</text> -->
+      <text class="title">注册账号</text>
     </view>
-    <!-- #ifndef H5 -->
-    <view v-if="loginType === 'wechat'" class="login-type-box">
-      <button type="primary" class="login-btn" @click="doWechatLogin">微信一键登录</button>
-      <view class="switch-type" @click="switchLoginType('account')">账号密码登录</view>
-    </view>
-    <!-- #endif -->
 
-    <!-- #ifdef H5 -->
-    <view v-if="true" class="login-type-box form-box">
-    <!-- #endif -->
-    <!-- #ifndef H5 -->
-    <view v-else class="login-type-box form-box">
-    <!-- #endif -->
+    <view class="login-type-box form-box">
       <view class="input-group">
         <input class="input" type="text" v-model="form.username" placeholder="请输入账号" />
       </view>
       <view class="input-group">
         <input class="input" type="password" v-model="form.password" placeholder="请输入密码" />
       </view>
+      <view class="input-group">
+        <input class="input" type="password" v-model="form.confirmPassword" placeholder="请再次输入密码" />
+      </view>
       <view class="input-group captcha-group">
         <input class="input" type="text" v-model="form.code" placeholder="请输入验证码" />
         <image :src="captchaUrl" class="captcha-img" @click="getCaptcha" mode="widthFix"></image>
       </view>
-      <button type="primary" class="login-btn" @click="doAccountLogin">登录</button>
-      <!-- #ifndef H5 -->
-      <view class="switch-type" @click="switchLoginType('wechat')">微信一键登录</view>
-      <!-- #endif -->
-      <view class="register-link" @click="goToRegister">没有账号？去注册</view>
+      <button type="primary" class="login-btn" @click="handleRegister">注册</button>
+      <view class="register-link" @click="goLogin">已有账号？去登录</view>
     </view>
-    
-    <button type="default" class="cancel-btn" @click="goBack">暂不登录</button>
   </view>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import { useUserStore } from '@/store/modules/user'
 import { request } from '@/utils/request'
 
-const userStore = useUserStore()
-const loginType = ref('wechat') // wechat | account
 const captchaUrl = ref('')
 const form = reactive({
   username: '',
   password: '',
+  confirmPassword: '',
   code: '',
   uuid: ''
 })
 
 onMounted(() => {
-  // #ifdef H5
-  loginType.value = 'account'
   getCaptcha()
-  // #endif
 })
 
 const getCaptcha = async () => {
@@ -72,55 +54,51 @@ const getCaptcha = async () => {
   }
 }
 
-const switchLoginType = (type) => {
-  loginType.value = type
-  if (type === 'account') {
-    getCaptcha()
-  }
-}
-
-const doWechatLogin = async () => {
-  try {
-    uni.showLoading({ title: '登录中...' })
-    await userStore.login()
-    uni.hideLoading()
-    uni.showToast({ title: '登录成功' })
-    setTimeout(() => {
-      uni.navigateBack()
-    }, 1500)
-  } catch (e) {
-    uni.hideLoading()
-    uni.showToast({ title: '登录失败', icon: 'none' })
-  }
-}
-
-const doAccountLogin = async () => {
-  if (!form.username || !form.password || !form.code) {
+const handleRegister = async () => {
+  if (!form.username || !form.password || !form.confirmPassword || !form.code) {
     uni.showToast({ title: '请填写完整信息', icon: 'none' })
     return
   }
   
+  if (form.password !== form.confirmPassword) {
+    uni.showToast({ title: '两次密码输入不一致', icon: 'none' })
+    return
+  }
+  
   try {
-    uni.showLoading({ title: '登录中...' })
-    await userStore.login(form)
+    uni.showLoading({ title: '注册中...' })
+    const res = await request({
+      url: '/register',
+      method: 'POST',
+      data: {
+        username: form.username,
+        password: form.password,
+        confirmPassword: form.confirmPassword,
+        code: form.code,
+        uuid: form.uuid
+      }
+    })
+    
     uni.hideLoading()
-    uni.showToast({ title: '登录成功' })
-    setTimeout(() => {
-      uni.navigateBack()
-    }, 1500)
+    
+    if (res.code === 200) {
+      uni.showToast({ title: '注册成功', icon: 'success' })
+      setTimeout(() => {
+        uni.navigateBack()
+      }, 1500)
+    } else {
+      uni.showToast({ title: res.msg, icon: 'none' })
+      getCaptcha()
+    }
   } catch (e) {
     uni.hideLoading()
-    uni.showToast({ title: typeof e === 'string' ? e : '登录失败', icon: 'none' })
-    getCaptcha() // Refresh captcha on fail
+    uni.showToast({ title: typeof e === 'string' ? e : '注册失败', icon: 'none' })
+    getCaptcha()
   }
 }
 
-const goBack = () => {
-  uni.switchTab({ url: '/pages/index/index' })
-}
-
-const goToRegister = () => {
-  uni.navigateTo({ url: '/pages/login/register' })
+const goLogin = () => {
+  uni.navigateBack()
 }
 </script>
 
@@ -197,33 +175,16 @@ const goToRegister = () => {
   }
 }
 
-.switch-type {
+.register-link {
   font-size: 14px;
   color: $uni-color-primary;
   margin-top: 15px;
   text-decoration: underline;
 }
 
-.register-link {
-  font-size: 14px;
-  color: #666;
-  margin-top: 10px;
-}
-
 .login-btn {
   width: 100%;
   border-radius: 40px;
-  height: 45px;
-  line-height: 45px;
-  font-size: 16px;
-}
-
-.cancel-btn {
-  width: 100%;
-  border-radius: 40px;
-  background: transparent;
-  border: 1px solid #ccc;
-  color: #999;
   height: 45px;
   line-height: 45px;
   font-size: 16px;

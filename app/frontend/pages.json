@@ -31,6 +31,12 @@
 			}
 		},
 		{
+			"path": "pages/login/register",
+			"style": {
+				"navigationBarTitleText": "注册账号"
+			}
+		},
+		{
 			"path": "pages/user/record",
 			"style": {
 				"navigationBarTitleText": "积分记录"

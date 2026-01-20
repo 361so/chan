@@ -65,4 +65,12 @@ public interface BusReportMapper
      * @return 数量
      */
     public int selectReportCountByUserName(String userName);
+
+    /**
+     * 查询用户最近一次上报记录
+     * 
+     * @param userName 用户名
+     * @return 结果
+     */
+    public BusReport selectLastReportByUserName(String userName);
 }

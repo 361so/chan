@@ -36,6 +36,7 @@ import { ref, onMounted } from 'vue'
 import { useLocationStore } from '@/store/modules/location'
 import { useUserStore } from '@/store/modules/user'
 import { addReport } from '@/api/report'
+import { uploadFile } from '@/utils/request'
 
 const locationStore = useLocationStore()
 const userStore = useUserStore()
@@ -73,38 +74,17 @@ const previewImage = (index) => {
   })
 }
 
-const uploadFile = (filePath) => {
-  return new Promise((resolve, reject) => {
-    uni.uploadFile({
-      url: 'http://localhost:8080/common/upload', // RuoYi default upload endpoint
-      filePath: filePath,
-      name: 'file',
-      header: {
-        Authorization: 'Bearer ' + uni.getStorageSync('token')
-      },
-      success: (res) => {
-        const data = JSON.parse(res.data)
-        if (data.code === 200) {
-          resolve(data.url) // Returns the relative URL or full URL depending on backend config
-        } else {
-          reject(data.msg)
-        }
-      },
-      fail: (err) => {
-        reject(err)
-      }
-    })
-  })
-}
-
 const submitReport = async () => {
   if (!userStore.isLoggedIn) {
     uni.showToast({ title: '请先登录', icon: 'none' })
     setTimeout(() => uni.switchTab({ url: '/pages/user/user' }), 1500)
     return
   }
-  // Allow reporting without images for now if user wants, but prompt says "Upload Photos"
-  // if (images.value.length === 0) { ... }
+  
+  if (images.value.length < 3) {
+    uni.showToast({ title: '请上传至少3张照片(发现/清理中/清理后)', icon: 'none' })
+    return
+  }
   
   submitting.value = true
   
@@ -135,8 +115,8 @@ const submitReport = async () => {
 
     const res = await addReport(reportData)
     if (res.code === 200) {
-      uni.showToast({ title: '上报成功 +10积分', icon: 'success' })
-      userStore.addPoints(10)
+      uni.showToast({ title: '上报成功，审核通过后增加积分', icon: 'success' })
+      // userStore.addPoints(10) // 移除立即增加积分逻辑
       images.value = []
       description.value = ''
       setTimeout(() => uni.navigateBack(), 1500)

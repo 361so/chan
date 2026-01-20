@@ -21,6 +21,9 @@ import com.ruoyi.system.service.IBusReportService;
 import com.ruoyi.common.utils.poi.ExcelUtil;
 import com.ruoyi.common.core.page.TableDataInfo;
 
+import com.ruoyi.common.annotation.RateLimiter;
+import com.ruoyi.common.enums.LimitType;
+
 /**
  * 上报记录Controller
  * 
@@ -69,6 +72,7 @@ public class BusReportController extends BaseController
      * 新增上报记录
      */
     @Log(title = "上报记录", businessType = BusinessType.INSERT)
+    @RateLimiter(key = "report", time = 10, count = 1, limitType = LimitType.IP)
     @PostMapping
     public AjaxResult add(@RequestBody BusReport busReport)
     {

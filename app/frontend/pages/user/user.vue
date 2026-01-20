@@ -59,15 +59,7 @@ import { useUserStore } from '@/store/modules/user'
 const userStore = useUserStore()
 
 const handleLogin = async () => {
-  try {
-    uni.showLoading({ title: '登录中...' })
-    await userStore.login()
-    uni.hideLoading()
-    uni.showToast({ title: '登录成功' })
-  } catch (e) {
-    uni.hideLoading()
-    uni.showToast({ title: '登录失败', icon: 'none' })
-  }
+  uni.navigateTo({ url: '/pages/login/login' })
 }
 
 const handleLogout = () => {

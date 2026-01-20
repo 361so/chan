@@ -75,6 +75,9 @@ const goToReport = () => {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  // #ifdef H5
+  height: calc(100vh - 50px); // Subtract tabbar height for H5 if needed, or just 100vh
+  // #endif
   padding: 0; // Override default container padding
   overflow: hidden;
 }
@@ -90,6 +93,9 @@ const goToReport = () => {
   border-top-right-radius: 20px;
   padding: 20px;
   padding-bottom: 40px;
+  // #ifdef H5
+  padding-bottom: 80px; // Extra padding for H5 tabbar overlap
+  // #endif
   display: flex;
   flex-direction: column;
   align-items: center;

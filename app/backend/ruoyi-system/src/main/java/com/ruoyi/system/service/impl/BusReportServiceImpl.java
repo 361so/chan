@@ -58,6 +58,28 @@ public class BusReportServiceImpl implements IBusReportService
     @Override
     public int insertBusReport(BusReport busReport)
     {
+        // 校验图片数量
+        String images = busReport.getImages();
+        if (images == null || images.trim().isEmpty()) {
+            throw new RuntimeException("请上传至少3张照片(发现/清理中/清理后)");
+        }
+        // 假设图片URL以逗号分隔
+        String[] imageUrls = images.split(",");
+        if (imageUrls.length < 3) {
+            throw new RuntimeException("请上传至少3张照片(发现/清理中/清理后)");
+        }
+
+        // 频率限制：检查用户最近一次上报时间
+        if (busReport.getCreateBy() != null) {
+            BusReport lastReport = busReportMapper.selectLastReportByUserName(busReport.getCreateBy());
+            if (lastReport != null && lastReport.getCreateTime() != null) {
+                long diff = System.currentTimeMillis() - lastReport.getCreateTime().getTime();
+                if (diff < 30 * 1000) { // 30秒内禁止重复上报
+                    throw new RuntimeException("上报过于频繁，请30秒后再试");
+                }
+            }
+        }
+        
         busReport.setCreateTime(DateUtils.getNowDate());
         // 初始状态为0（待审核）
         if (busReport.getStatus() == null) {

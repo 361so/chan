@@ -99,4 +99,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <select id="selectReportCountByUserName" parameterType="String" resultType="int">
         select count(1) from bus_report where create_by = #{userName}
     </select>
+
+    <select id="selectLastReportByUserName" parameterType="String" resultMap="BusReportResult">
+        select id, create_time from bus_report where create_by = #{userName} order by create_time desc limit 1
+    </select>
 </mapper>
