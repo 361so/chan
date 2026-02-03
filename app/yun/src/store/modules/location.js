@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import QQMapWX from 'qqmap-wx-jssdk'
 
 export const useLocationStore = defineStore('location', {
   state: () => ({
@@ -10,42 +11,40 @@ export const useLocationStore = defineStore('location', {
   actions: {
     updateLocation() {
       return new Promise((resolve, reject) => {
+        // 实例化API核心类
+        // 申请地址：https://lbs.qq.com/dev/console/key/manage
+        const qqmapsdk = new QQMapWX({
+            key: 'LWHBZ-LKJ34-HABUE-X55XF-BZNPK-2VF7I' // 这是一个示例Key，请替换为您在腾讯位置服务申请的Key
+        });
+
         uni.getLocation({
           type: 'gcj02',
           isHighAccuracy: true,
-          geocode: true,
+          // geocode: true, // 小程序中通常无效，需使用SDK
           success: (res) => {
             
             this.latitude = res.latitude;
             this.longitude = res.longitude;
             this.error = null;
             
-            // 天地图逆地理编码
-            const key = '6e74d6866fd30517a988e35b5a494a2c';
-            const postStr = JSON.stringify({
-              lon: res.longitude,
-              lat: res.latitude,
-              ver: 1
-            });
-            
-            uni.request({
-              url: 'https://api.tianditu.gov.cn/geocoder',
-              method: 'GET',
-              data: {
-                postStr: postStr,
-                type: 'geocode',
-                tk: key
+            // 腾讯地图逆地理编码
+            qqmapsdk.reverseGeocoder({
+              location: {
+                latitude: res.latitude,
+                longitude: res.longitude
               },
               success: (geoRes) => {
-                if (geoRes.data && geoRes.data.result && geoRes.data.result.formatted_address) {
-                  this.address = geoRes.data.result.formatted_address;
+                if (geoRes.result && geoRes.result.formatted_addresses && geoRes.result.formatted_addresses.recommend) {
+                   this.address = geoRes.result.formatted_addresses.recommend;
+                } else if (geoRes.result && geoRes.result.address) {
+                   this.address = geoRes.result.address;
                 } else {
-                  this.address = `Lat: ${res.latitude.toFixed(4)}, Lng: ${res.longitude.toFixed(4)}`;
+                   this.address = `Lat: ${res.latitude.toFixed(4)}, Lng: ${res.longitude.toFixed(4)}`;
                 }
                 resolve(res);
               },
               fail: (err) => {
-                console.error('Tianditu geocoding failed', err);
+                console.error('QQMap reverseGeocoder failed', err);
                 this.address = `Lat: ${res.latitude.toFixed(4)}, Lng: ${res.longitude.toFixed(4)}`;
                 resolve(res);
               }

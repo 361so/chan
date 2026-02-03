@@ -278,8 +278,15 @@ async function handleAdminListReport(data, openid) {
   }
   
   // 查询待审核的
+  // const res = await db.collection('reports')
+  //   .where({ status: '0' })
+  //   .orderBy('createTime', 'desc')
+  //   .get()
+  
+  // 改为查询所有，以便查看历史记录
+  // 可以根据 status 排序，让待审核的排在前面
   const res = await db.collection('reports')
-    .where({ status: '0' })
+    .orderBy('status', 'asc') // 0(待审核) -> 1(已通过) -> 2(已驳回)
     .orderBy('createTime', 'desc')
     .get()
     

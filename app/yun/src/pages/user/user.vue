@@ -51,6 +51,10 @@
         <text>管理员审核</text>
         <text class="arrow">›</text>
       </view>
+      <button class="menu-item share-btn" open-type="share">
+        <text>分享给好友</text>
+        <text class="arrow">›</text>
+      </button>
     </view>
     
     <button v-if="userStore.isLoggedIn" class="logout-btn" @click="handleLogout">退出登录</button>
@@ -63,6 +67,23 @@ import { computed } from 'vue'
 import { request, uploadFile } from '@/utils/request'
 
 const userStore = useUserStore()
+
+// Share config
+// Removed specific share config to use global mixin, or keep as override if needed. 
+// For now, removing to let global mixin take over, OR we can keep it if we want dynamic title with points.
+// User asked for "add to ALL pages", which implies a default.
+// But this page has specific data (points) we might want to share. 
+// Let's comment it out to test the global mixin first, or keep it. 
+// Actually, global mixin is "default", component level is "override". 
+// Let's keep this one as it is more specific and better for the user page.
+// But wait, the user said "Give all pages...". 
+// I will keep the specific one here as it's better, but I'll remove the import of onShare... to avoid duplication if I decide to rely on mixin. 
+// However, mixin in Vue 3 + <script setup> is tricky. 
+// Let's rely on the mixin I just added to main.js. 
+// If I remove these, the mixin should work. 
+// BUT, Composition API `onShareAppMessage` might not be affected by Options API `mixin`.
+// Let's removing the Composition API hooks here to see if the Mixin works.
+
 const isAdmin = computed(() => {
   return userStore.userInfo && userStore.userInfo.role === 'admin'
 })
@@ -281,6 +302,20 @@ const navigateTo = (path) => {
     
     .arrow {
       color: #ccc;
+    }
+  }
+  
+  .share-btn {
+    background-color: #fff;
+    line-height: normal;
+    text-align: left;
+    border-radius: 0;
+    margin: 0;
+    padding: 15px 0;
+    width: 100%;
+    
+    &::after {
+      border: none;
     }
   }
 }

@@ -8,7 +8,11 @@
       :markers="markers"
       :scale="16"
       show-location
-    ></map>
+    >
+      <cover-view class="reset-location" @click="resetLocation">
+        <cover-image class="icon" src="/static/images/dingwei.png"></cover-image>
+      </cover-view>
+    </map>
 
     <view class="action-area">
       <view class="location-info" v-if="locationStore.address">
@@ -87,6 +91,12 @@ const goToReport = () => {
     url: '/pages/report/report'
   })
 }
+
+const resetLocation = () => {
+  const mapCtx = uni.createMapContext('map')
+  mapCtx.moveToLocation()
+  locationStore.updateLocation()
+}
 </script>
 
 <style lang="scss">
@@ -104,6 +114,27 @@ const goToReport = () => {
 .map-view {
   flex: 1;
   width: 100%;
+  position: relative;
+}
+
+.reset-location {
+  position: absolute;
+  bottom: 40px;
+  right: 20px;
+  width: 40px;
+  height: 40px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 99;
+
+  .icon {
+    width: 28px;
+    height: 28px;
+  }
 }
 
 .action-area {

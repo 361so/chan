@@ -9,14 +9,25 @@
       <button size="mini" type="default" @click="refreshLocation">刷新定位</button>
     </view>
 
+    <view class="type-card card">
+      <view class="title">举报类型</view>
+      <radio-group @change="handleTypeChange" class="type-group">
+        <label class="type-item" v-for="(item, index) in reportTypes" :key="index">
+          <radio :value="item.value" :checked="item.value === reportType" color="#007aff" />
+          <text>{{ item.label }}</text>
+        </label>
+      </radio-group>
+    </view>
+
     <view class="upload-card card">
-      <view class="title">上传照片 (需包含：发现、清理中、清理后)</view>
-      <view class="image-list">
-        <view class="image-item" v-for="(img, index) in images" :key="index">
-          <image :src="img" mode="aspectFill" @click="previewImage(index)"></image>
-          <view class="delete" @click="deleteImage(index)">x</view>
+      <view class="title">上传证据 (照片或视频，至少1个)</view>
+      <view class="media-list">
+        <view class="media-item" v-for="(item, index) in mediaList" :key="index">
+          <image v-if="item.type === 'image'" :src="item.path" mode="aspectFill" @click="previewMedia(index)"></image>
+          <video v-else :src="item.path" class="video-preview"></video>
+          <view class="delete" @click="deleteMedia(index)">x</view>
         </view>
-        <view class="add-btn" v-if="images.length < 3" @click="chooseImage">
+        <view class="add-btn" v-if="mediaList.length < 3" @click="chooseMedia">
           <text>+</text>
         </view>
       </view>
@@ -41,9 +52,16 @@ import { uploadFile } from '@/utils/request'
 const locationStore = useLocationStore()
 const userStore = useUserStore()
 
-const images = ref([])
+const mediaList = ref([]) // { type: 'image' | 'video', path: '' }
 const description = ref('')
 const submitting = ref(false)
+const reportType = ref('env') // 默认环境卫生
+
+const reportTypes = [
+  { label: '环境卫生', value: 'env' },
+  { label: '交通秩序', value: 'traffic' },
+  { label: '公共设施', value: 'facility' }
+]
 
 onMounted(() => {
   locationStore.updateLocation()
@@ -53,25 +71,40 @@ const refreshLocation = () => {
   locationStore.updateLocation()
 }
 
-const chooseImage = () => {
-  uni.chooseImage({
-    count: 3 - images.value.length,
-    sizeType: ['compressed'],
+const handleTypeChange = (e) => {
+  reportType.value = e.detail.value
+}
+
+const chooseMedia = () => {
+  uni.chooseMedia({
+    count: 3 - mediaList.value.length,
+    mediaType: ['image', 'video'],
+    sourceType: ['album', 'camera'],
+    maxDuration: 60,
+    camera: 'back',
     success: (res) => {
-      images.value = [...images.value, ...res.tempFilePaths]
+      const newFiles = res.tempFiles.map(file => ({
+        type: file.fileType || (file.tempFilePath.endsWith('.mp4') ? 'video' : 'image'), // simple check
+        path: file.tempFilePath
+      }))
+      mediaList.value = [...mediaList.value, ...newFiles]
     }
   })
 }
 
-const deleteImage = (index) => {
-  images.value.splice(index, 1)
+const deleteMedia = (index) => {
+  mediaList.value.splice(index, 1)
 }
 
-const previewImage = (index) => {
-  uni.previewImage({
-    urls: images.value,
-    current: index
-  })
+const previewMedia = (index) => {
+  const item = mediaList.value[index]
+  if (item.type === 'image') {
+    const images = mediaList.value.filter(m => m.type === 'image').map(m => m.path)
+    uni.previewImage({
+      urls: images,
+      current: item.path
+    })
+  }
 }
 
 const submitReport = async () => {
@@ -81,23 +114,26 @@ const submitReport = async () => {
     return
   }
   
-  if (images.value.length < 3) {
-    uni.showToast({ title: '请上传至少3张照片(发现/清理中/清理后)', icon: 'none' })
+  if (mediaList.value.length < 1) {
+    uni.showToast({ title: '请上传至少1个证据(照片或视频)', icon: 'none' })
     return
   }
   
   submitting.value = true
   
   try {
-    // 1. Upload images
-    const uploadedUrls = []
-    for (const imgPath of images.value) {
+    // 1. Upload media
+    const uploadedFiles = []
+    for (const item of mediaList.value) {
       try {
-        const url = await uploadFile(imgPath)
-        uploadedUrls.push(url)
+        const url = await uploadFile(item.path)
+        uploadedFiles.push({
+          type: item.type,
+          url: url
+        })
       } catch (e) {
         console.error('Upload failed', e)
-        uni.showToast({ title: '图片上传失败', icon: 'none' })
+        uni.showToast({ title: '文件上传失败', icon: 'none' })
         submitting.value = false
         return
       }
@@ -106,18 +142,19 @@ const submitReport = async () => {
     // 2. Submit report
     const reportData = {
       description: description.value,
-      images: uploadedUrls.join(','),
+      media: uploadedFiles, // Store as array of objects
+      images: uploadedFiles.filter(f => f.type === 'image').map(f => f.url).join(','), // Backwards compatibility
+      type: reportType.value,
       latitude: locationStore.latitude,
       longitude: locationStore.longitude,
       address: locationStore.address,
-      status: '0' // 0=Pending, 1=Cleaned
+      status: '0' // 0=Pending, 1=Approved, 2=Rejected
     }
 
     const res = await addReport(reportData)
     if (res.code === 200) {
-      uni.showToast({ title: '上报成功，审核通过后增加积分', icon: 'success' })
-      // userStore.addPoints(10) // 移除立即增加积分逻辑
-      images.value = []
+      uni.showToast({ title: '上报成功，等待审核', icon: 'success' })
+      mediaList.value = []
       description.value = ''
       setTimeout(() => uni.navigateBack(), 1500)
     } else {
@@ -145,22 +182,37 @@ const submitReport = async () => {
   }
 }
 
-.image-list {
+.type-card {
+  .type-group {
+    display: flex;
+    flex-wrap: wrap;
+    .type-item {
+      margin-right: 20px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      font-size: 14px;
+    }
+  }
+}
+
+.media-list {
   display: flex;
   flex-wrap: wrap;
   margin-top: 10px;
   
-  .image-item {
+  .media-item {
     width: 30%;
     height: 80px;
     margin-right: 3%;
     margin-bottom: 10px;
     position: relative;
     
-    image {
+    image, .video-preview {
       width: 100%;
       height: 100%;
       border-radius: 4px;
+      background: #000;
     }
     
     .delete {
@@ -175,6 +227,7 @@ const submitReport = async () => {
       text-align: center;
       line-height: 18px;
       font-size: 12px;
+      z-index: 10;
     }
   }
   
