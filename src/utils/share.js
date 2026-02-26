@@ -1,22 +1,27 @@
-export default {
-  onLoad() {
-    // 开启分享菜单
-    uni.showShareMenu({
-      withShareTicket: true,
-      menus: ['shareAppMessage', 'shareTimeline']
-    })
-  },
-  onShareAppMessage(res) {
+import { onShareAppMessage, onShareTimeline } from '@dcloudio/uni-app'
+
+export function useGlobalShare(options = {}) {
+  const defaultShare = {
+    title: '城市微光 - 记录城市温度，让美好被看见',
+    path: '/pages/index/index',
+    imageUrl: '/static/logo.png',
+    ...options
+  }
+
+  onShareAppMessage(() => {
     return {
-      title: '发现身边不文明行为，一起铲一铲！',
-      path: '/pages/index/index',
-      imageUrl: '/static/logo.png'
+      title: defaultShare.title,
+      path: defaultShare.path,
+      imageUrl: defaultShare.imageUrl
     }
-  },
-  onShareTimeline(res) {
+  })
+
+  onShareTimeline(() => {
     return {
-      title: '发现身边不文明行为，一起铲一铲！',
+      title: defaultShare.title,
       query: ''
     }
-  }
+  })
 }
+
+export default useGlobalShare

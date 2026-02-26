@@ -33,9 +33,18 @@ exports.main = async (event, context) => {
 
   // 4. 上报相关
   if (url.startsWith('/system/report')) {
-    if (method === 'POST') return handleAddReport(data, OPENID)
+    if (method === 'POST' && url === '/system/report') return handleAddReport(data, OPENID)
+    if (method === 'POST' && url === '/system/report/like') return handleLikeReport(data, OPENID)
     if (method === 'GET' && url.includes('/list')) return handleListReport(data, OPENID)
-    // if (method === 'GET') return handleGetReport(url, OPENID) // Detail
+    if (method === 'GET' && url.includes('/detail')) {
+        // 提取 ID: /system/report/detail/{id}
+        const parts = url.split('/detail/')
+        if (parts.length > 1) {
+             const id = parts[1].trim() // 去除可能存在的空白字符
+             console.log('Extract ID:', id, 'Length:', id.length, 'from URL:', url)
+             return handleGetReportDetail(id, OPENID)
+        }
+    }
   }
   
   // 5. 排行榜
@@ -52,6 +61,11 @@ exports.main = async (event, context) => {
   if (url === '/admin/report/list') {
     return handleAdminListReport(data, OPENID)
   }
+  
+  // 9. 管理员删除上报
+  if (url === '/admin/report/delete') {
+    return handleDeleteReport(data, OPENID)
+  }
 
   // 8. 用户更新信息
   if (url === '/user/update') {
@@ -65,6 +79,132 @@ exports.main = async (event, context) => {
 }
 
 // --- Handlers ---
+
+async function handleGetReportDetail(id, openid) {
+  try {
+    console.log('Querying report with ID:', id, 'Type:', typeof id)
+    
+    // 调试：先查一条看看结构
+    // const debugRes = await db.collection('reports').limit(1).get()
+    // if (debugRes.data.length > 0) {
+    //    console.log('Sample report _id:', debugRes.data[0]._id, 'Type:', typeof debugRes.data[0]._id)
+    // }
+
+    // 直接尝试 where 查询
+    const listRes = await db.collection('reports').where({ _id: id }).get()
+    
+    if (listRes.data.length === 0) {
+        console.log('Report not found for ID:', id)
+        // 调试：尝试列出所有 ID 进行对比（仅调试用，生产环境慎用）
+        // const allRes = await db.collection('reports').field({_id: true}).get()
+        // console.log('All report IDs:', allRes.data.map(item => item._id))
+        
+        return { code: 404, msg: '记录不存在' }
+    }
+    
+    const report = listRes.data[0]
+    console.log('Report found:', report._id)
+    
+    // 权限检查：
+    // 1. 管理员 -> 可见
+    // 2. 作者本人 -> 可见
+    // 3. 审核通过 -> 可见
+    const isAdmin = await checkAdmin(openid)
+    if (!isAdmin && report.openid !== openid && report.status !== '1') {
+       return { code: 403, msg: '无权查看' }
+    }
+    
+    // 检查是否点赞
+    let isLiked = false
+    try {
+        const likeRes = await db.collection('likes').where({
+            reportId: id,
+            openid: openid
+        }).count()
+        isLiked = likeRes.total > 0
+    } catch (e) {
+        console.warn('Check like status failed (likes collection might not exist):', e)
+        // 忽略错误，默认为未点赞
+    }
+    
+    return {
+      code: 200,
+      data: {
+          ...report,
+          isLiked: isLiked
+      }
+    }
+  } catch (e) {
+    console.error('Get detail failed:', e)
+    return { code: 500, msg: '获取详情失败: ' + e.message }
+  }
+}
+
+async function handleLikeReport(data, openid) {
+    const { id, isLike } = data
+    const dbCmd = db.command
+    
+    try {
+        if (isLike) {
+            // 点赞
+            // 1. 检查是否已点赞
+            let countRes = { total: 0 }
+            try {
+                countRes = await db.collection('likes').where({
+                    reportId: id,
+                    openid: openid
+                }).count()
+            } catch (e) {
+                // 如果集合不存在，尝试创建（云函数无法创建集合，需手动）
+                // 这里只能抛出更友好的错误
+                 if (e.errCode === -502005) {
+                     return { code: 500, msg: '请联系管理员在云数据库创建 "likes" 集合' }
+                 }
+                 throw e
+            }
+            
+            if (countRes.total === 0) {
+                // 2. 添加点赞记录
+                await db.collection('likes').add({
+                    data: {
+                        reportId: id,
+                        openid: openid,
+                        createTime: new Date()
+                    }
+                })
+                // 3. 增加计数
+                await db.collection('reports').doc(id).update({
+                    data: {
+                        likes: dbCmd.inc(1)
+                    }
+                })
+            }
+        } else {
+            // 取消点赞
+            try {
+                const delRes = await db.collection('likes').where({
+                    reportId: id,
+                    openid: openid
+                }).remove()
+                
+                if (delRes.stats.removed > 0) {
+                     // 减少计数
+                     await db.collection('reports').doc(id).update({
+                        data: {
+                            likes: dbCmd.inc(-1)
+                        }
+                    })
+                }
+            } catch (e) {
+                console.warn('Cancel like failed:', e)
+            }
+        }
+        return { code: 200, msg: '操作成功' }
+    } catch (e) {
+        console.error(e)
+        return { code: 500, msg: '操作失败: ' + (e.msg || e.message) }
+    }
+}
 
 // 简单硬编码管理员 OpenID，实际生产建议存在数据库 role 字段
 const ADMIN_OPENIDS = [
@@ -81,6 +221,31 @@ async function checkAdmin(openid) {
     return true
   }
   return false
+}
+
+async function handleDeleteReport(data, openid) {
+  const isAdmin = await checkAdmin(openid)
+  if (!isAdmin) {
+    return { code: 403, msg: '无权操作' }
+  }
+  
+  const { id } = data
+  try {
+    // 1. 删除上报记录
+    await db.collection('reports').doc(id).remove()
+    
+    // 2. 删除相关的点赞记录 (可选，保持数据清洁)
+    try {
+        await db.collection('likes').where({ reportId: id }).remove()
+    } catch (e) {
+        // 忽略 likes 集合不存在的错误
+    }
+    
+    return { code: 200, msg: '删除成功' }
+  } catch (e) {
+    console.error('Delete report failed:', e)
+    return { code: 500, msg: '删除失败' }
+  }
 }
 
 async function handleUpdateUser(data, openid) {

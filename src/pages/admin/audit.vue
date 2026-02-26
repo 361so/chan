@@ -47,9 +47,12 @@
           <text v-if="item.remark">备注: {{ item.remark }}</text>
         </view>
 
-        <view class="actions" v-if="item.status === '0'">
-          <button size="mini" type="warn" class="btn reject" @click="handleAudit(item, '2')">驳回</button>
-          <button size="mini" type="primary" class="btn approve" @click="handleAudit(item, '1')">通过(+{{ getTypePoints(item.type) }}分)</button>
+        <view class="actions">
+          <button size="mini" type="warn" class="btn delete" @click="handleDelete(item)">删除</button>
+          <block v-if="item.status === '0'">
+            <button size="mini" type="default" class="btn reject" @click="handleAudit(item, '2')">驳回</button>
+            <button size="mini" type="primary" class="btn approve" @click="handleAudit(item, '1')">通过(+{{ getTypePoints(item.type) }}分)</button>
+          </block>
         </view>
       </view>
     </view>
@@ -86,18 +89,18 @@ const getList = async () => {
 
 const getTypeLabel = (type) => {
   const map = {
-    'env': '环境卫生',
-    'traffic': '交通秩序',
-    'facility': '公共设施'
+    'beauty': '社区美景',
+    'behavior': '文明行为',
+    'public': '公益行动'
   }
   return map[type] || '其他'
 }
 
 const getTypePoints = (type) => {
   const map = {
-    'env': 10,
-    'traffic': 15,
-    'facility': 20
+    'beauty': 10,
+    'behavior': 15,
+    'public': 20
   }
   return map[type] || 10
 }
@@ -171,6 +174,38 @@ const handleAudit = (item, status) => {
   })
 }
 
+const handleDelete = (item) => {
+  uni.showModal({
+    title: '删除确认',
+    content: '确定要永久删除这条记录吗？',
+    success: async (res) => {
+      if (res.confirm) {
+        try {
+          uni.showLoading({ title: '删除中' })
+          const delRes = await request({
+            url: '/admin/report/delete',
+            method: 'POST',
+            data: {
+              id: item._id
+            }
+          })
+          
+          uni.hideLoading()
+          if (delRes.code === 200) {
+            uni.showToast({ title: '删除成功' })
+            getList() // Refresh list
+          } else {
+            uni.showToast({ title: delRes.msg || '删除失败', icon: 'none' })
+          }
+        } catch (e) {
+          uni.hideLoading()
+          uni.showToast({ title: '删除异常', icon: 'none' })
+        }
+      }
+    }
+  })
+}
+
 const previewMedia = (item, current) => {
   const mediaList = getMediaList(item)
   const media = mediaList[current]
@@ -222,9 +257,9 @@ onShow(() => {
       background: #e0e0e0;
       color: #666;
       
-      &.env { background: #e1f5fe; color: #0288d1; }
-      &.traffic { background: #fff3e0; color: #f57c00; }
-      &.facility { background: #f3e5f5; color: #7b1fa2; }
+      &.beauty { background: #e1f5fe; color: #0288d1; }
+      &.behavior { background: #fff3e0; color: #f57c00; }
+      &.public { background: #f3e5f5; color: #7b1fa2; }
     }
     
     .status-tag {

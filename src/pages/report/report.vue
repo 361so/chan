@@ -1,16 +1,18 @@
 <template>
   <view class="container">
     <view class="location-card card">
-      <view class="title">当前位置</view>
-      <view class="address" @click="refreshLocation">
-        <text class="uni-icon uni-icon-location"></text>
-        {{ locationStore.address }}
+      <view class="header-row">
+        <view class="title">当前位置</view>
+        <button size="mini" type="default" @click="chooseLocation">选择位置</button>
       </view>
-      <button size="mini" type="default" @click="refreshLocation">刷新定位</button>
+      <view class="address" @click="chooseLocation">
+        <text class="uni-icon uni-icon-location"></text>
+        {{ locationStore.address || '点击选择位置' }}
+      </view>
     </view>
 
     <view class="type-card card">
-      <view class="title">举报类型</view>
+      <view class="title">打卡类型</view>
       <radio-group @change="handleTypeChange" class="type-group">
         <label class="type-item" v-for="(item, index) in reportTypes" :key="index">
           <radio :value="item.value" :checked="item.value === reportType" color="#007aff" />
@@ -20,7 +22,7 @@
     </view>
 
     <view class="upload-card card">
-      <view class="title">上传证据 (照片或视频，至少1个)</view>
+      <view class="title">上传照片 (至少1张)</view>
       <view class="media-list">
         <view class="media-item" v-for="(item, index) in mediaList" :key="index">
           <image v-if="item.type === 'image'" :src="item.path" mode="aspectFill" @click="previewMedia(index)"></image>
@@ -38,7 +40,7 @@
       <textarea v-model="description" placeholder="请输入描述信息..." class="desc-input" />
     </view>
 
-    <button class="submit-btn btn-primary" :loading="submitting" @click="submitReport">立即上报</button>
+    <button class="submit-btn btn-primary" :loading="submitting" @click="submitReport">立即打卡</button>
   </view>
 </template>
 
@@ -55,12 +57,12 @@ const userStore = useUserStore()
 const mediaList = ref([]) // { type: 'image' | 'video', path: '' }
 const description = ref('')
 const submitting = ref(false)
-const reportType = ref('env') // 默认环境卫生
+const reportType = ref('beauty') // 默认社区美景
 
 const reportTypes = [
-  { label: '环境卫生', value: 'env' },
-  { label: '交通秩序', value: 'traffic' },
-  { label: '公共设施', value: 'facility' }
+  { label: '社区美景', value: 'beauty' },
+  { label: '文明行为', value: 'behavior' },
+  { label: '公益行动', value: 'public' }
 ]
 
 onMounted(() => {
@@ -69,6 +71,24 @@ onMounted(() => {
 
 const refreshLocation = () => {
   locationStore.updateLocation()
+}
+
+const chooseLocation = () => {
+  uni.chooseLocation({
+    success: (res) => {
+      // 更新 store 中的位置信息
+      locationStore.setAddress(res.address + (res.name ? ` (${res.name})` : ''))
+      locationStore.setLatitude(res.latitude)
+      locationStore.setLongitude(res.longitude)
+    },
+    fail: (err) => {
+      console.error('选择位置失败', err)
+      // 如果选择失败，尝试自动定位
+      if (err.errMsg && err.errMsg.indexOf('cancel') === -1) {
+         locationStore.updateLocation()
+      }
+    }
+  })
 }
 
 const handleTypeChange = (e) => {
@@ -153,16 +173,16 @@ const submitReport = async () => {
 
     const res = await addReport(reportData)
     if (res.code === 200) {
-      uni.showToast({ title: '上报成功，等待审核', icon: 'success' })
+      uni.showToast({ title: '打卡成功，等待审核', icon: 'success' })
       mediaList.value = []
       description.value = ''
       setTimeout(() => uni.navigateBack(), 1500)
     } else {
-      uni.showToast({ title: res.msg || '上报失败', icon: 'none' })
+      uni.showToast({ title: res.msg || '打卡失败', icon: 'none' })
     }
   } catch (e) {
     console.error('Report failed', e)
-    uni.showToast({ title: '上报失败', icon: 'none' })
+    uni.showToast({ title: '打卡失败', icon: 'none' })
   } finally {
     submitting.value = false
   }
@@ -172,13 +192,40 @@ const submitReport = async () => {
 <style lang="scss">
 .location-card {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  
+  .header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 10px;
+    
+    .title {
+      font-size: 16px;
+      font-weight: bold;
+    }
+    
+    button {
+      margin: 0; // Remove default margin
+    }
+  }
+
   .address {
     font-size: 14px;
-    color: #666;
-    flex: 1;
-    margin-right: 10px;
+    color: #333;
+    background: #f8f8f8;
+    padding: 10px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    width: 100%;
+    box-sizing: border-box;
+    
+    .uni-icon {
+      margin-right: 5px;
+      color: #007aff;
+    }
   }
 }
 

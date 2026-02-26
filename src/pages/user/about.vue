@@ -2,7 +2,7 @@
   <view class="container">
     <view class="logo-container">
       <image src="/static/logo.png" class="logo"></image>
-      <view class="app-name">铲泡屎</view>
+      <view class="app-name">城市微光</view>
       <view class="version">Version {{version || '1.0.0'}}</view>
     </view>
     
@@ -10,7 +10,7 @@
       <view class="section">
         <view class="title">项目介绍</view>
         <view class="text">
-          “铲泡屎”是一款致力于改善城市环境的公益小程序。我们鼓励用户发现并上报城市中的宠物粪便、垃圾等不文明现象。通过用户的共同参与，我们希望能够建立一个更加清洁、文明的城市环境。
+          “城市微光”是一个城市文明共建平台，鼓励市民随手拍下社区美景、文明瞬间与公益行动。用微小的力量汇聚成城市文明的璀璨星河。每一次打卡都是对家园的热爱，每一份分享都能点亮城市的文明之光。
         </view>
       </view>
       
@@ -18,7 +18,7 @@
         <view class="title">联系我们</view>
         <!-- <view class="cell">
           <text class="label">官方网站</text>
-          <text class="value">www.chanpaoshi.com</text>
+          <text class="value">www.cityglimmer.com</text>
         </view> -->
         <view class="cell">
           <text class="label">客服邮箱</text>
@@ -28,7 +28,7 @@
     </view>
     
     <view class="footer">
-      <text>Copyright © 2026 铲泡屎 All Rights Reserved</text>
+      <text>Copyright © 2026 城市微光 All Rights Reserved</text>
       <text>idea团队: web前端学习营地</text>
     </view>
   </view>

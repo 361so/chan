@@ -1,15 +1,15 @@
 import { createSSRApp } from 'vue'
 import * as Pinia from 'pinia'
 import App from './App.vue'
-import share from './utils/share'
+// import share from './utils/share'
 
 export function createApp() {
   const app = createSSRApp(App)
   const store = Pinia.createPinia()
   app.use(store)
   
-  // 全局混入分享功能
-  app.mixin(share)
+  // 全局混入分享功能 (已移除，避免与页面级分享逻辑冲突)
+  // app.mixin(share)
   
   return {
     app,

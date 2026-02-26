@@ -57,6 +57,15 @@ export const useLocationStore = defineStore('location', {
           }
         });
       });
+    },
+    setAddress(addr) {
+      this.address = addr
+    },
+    setLatitude(lat) {
+      this.latitude = lat
+    },
+    setLongitude(lng) {
+      this.longitude = lng
     }
   }
 })

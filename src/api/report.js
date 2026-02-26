@@ -1,20 +1,33 @@
 import { request } from '@/utils/request'
 
-// 查询上报列表
 export function listReport(query) {
   return request({
     url: '/system/report/list',
     method: 'GET',
-    data: query
+    params: query
   })
 }
 
-// 新增上报
 export function addReport(data) {
   return request({
     url: '/system/report',
     method: 'POST',
     data: data
+  })
+}
+
+export function likeReport(data) {
+  return request({
+    url: '/system/report/like',
+    method: 'POST',
+    data: data
+  })
+}
+
+export function getReportDetail(id) {
+  return request({
+    url: '/system/report/detail/' + id,
+    method: 'GET'
   })
 }
 

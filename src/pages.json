@@ -3,19 +3,32 @@
 		{
 			"path": "pages/index/index",
 			"style": {
-				"navigationBarTitleText": "铲泡屎"
+				"navigationBarTitleText": "城市微光"
 			}
 		},
 		{
 			"path": "pages/report/report",
 			"style": {
-				"navigationBarTitleText": "上报粪便"
+				"navigationBarTitleText": "文明打卡"
+			}
+		},
+		{
+			"path": "pages/feed/feed",
+			"style": {
+				"navigationBarTitleText": "广场",
+				"enablePullDownRefresh": true
+			}
+		},
+		{
+			"path": "pages/feed/detail",
+			"style": {
+				"navigationBarTitleText": "详情"
 			}
 		},
 		{
 			"path": "pages/rank/rank",
 			"style": {
-				"navigationBarTitleText": "积分榜"
+				"navigationBarTitleText": "光荣榜"
 			}
 		},
 		{
@@ -39,7 +52,7 @@
 		{
 			"path": "pages/user/history",
 			"style": {
-				"navigationBarTitleText": "填报历史"
+				"navigationBarTitleText": "打卡历史"
 			}
 		},
 		{
@@ -63,7 +76,7 @@
 	],
 	"globalStyle": {
 		"navigationBarTextStyle": "black",
-		"navigationBarTitleText": "铲泡屎",
+		"navigationBarTitleText": "城市微光",
 		"navigationBarBackgroundColor": "#F8F8F8",
 		"backgroundColor": "#F8F8F8"
 	},
@@ -80,8 +93,14 @@
 				"selectedIconPath": "static/tabbar/report_active.png"
 			},
 			{
+				"pagePath": "pages/feed/feed",
+				"text": "广场",
+				"iconPath": "static/tabbar/feed.png",
+				"selectedIconPath": "static/tabbar/feed_active.png"
+			},
+			{
 				"pagePath": "pages/rank/rank",
-				"text": "排行",
+				"text": "榜单",
 				"iconPath": "static/tabbar/rank.png",
 				"selectedIconPath": "static/tabbar/rank_active.png"
 			},
