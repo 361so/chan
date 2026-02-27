@@ -2,7 +2,7 @@
   <view class="container login-page">
     <view class="logo-box">
       <image src="/static/logo.png" mode="widthFix" class="logo"></image>
-      <!-- <text class="title">铲泡屎</text> -->
+      <!-- <text class="title">城市微光</text> -->
     </view>
     <view class="login-type-box">
       <button type="primary" class="login-btn" @click="doWechatLogin">微信一键登录</button>
