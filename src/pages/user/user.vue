@@ -127,8 +127,9 @@ const changeAvatar = () => {
         // 1. 检查图片安全
         // 检查图片大小，如果超过 1MB 则压缩
         let checkPath = filePath
+        const fs = uni.getFileSystemManager()
         const fileInfo = await new Promise((resolve, reject) => {
-            uni.getFileInfo({
+            fs.getFileInfo({
                 filePath: checkPath,
                 success: resolve,
                 fail: reject
@@ -147,7 +148,6 @@ const changeAvatar = () => {
             checkPath = compressRes.tempFilePath
         }
         
-        const fs = uni.getFileSystemManager()
         const base64 = fs.readFileSync(checkPath, 'base64')
         
         const checkRes = await wx.cloud.callFunction({

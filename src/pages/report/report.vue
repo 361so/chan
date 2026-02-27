@@ -151,8 +151,9 @@ const submitReport = async () => {
         // 先检查内容安全 (使用本地文件转 base64)
         if (item.type === 'image') {
             // 检查图片大小，如果超过 1MB 则压缩
+            const fs = uni.getFileSystemManager()
             const fileInfo = await new Promise((resolve, reject) => {
-                uni.getFileInfo({
+                fs.getFileInfo({
                     filePath: filePath,
                     success: resolve,
                     fail: reject
@@ -172,7 +173,6 @@ const submitReport = async () => {
                 filePath = compressRes.tempFilePath
             }
             
-            const fs = uni.getFileSystemManager()
             const base64 = fs.readFileSync(filePath, 'base64')
             
             const checkRes = await wx.cloud.callFunction({
