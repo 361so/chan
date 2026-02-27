@@ -146,10 +146,34 @@ const submitReport = async () => {
     const uploadedFiles = []
     for (const item of mediaList.value) {
       try {
+        let filePath = item.path
+        
         // 先检查内容安全 (使用本地文件转 base64)
         if (item.type === 'image') {
+            // 检查图片大小，如果超过 1MB 则压缩
+            const fileInfo = await new Promise((resolve, reject) => {
+                uni.getFileInfo({
+                    filePath: filePath,
+                    success: resolve,
+                    fail: reject
+                })
+            })
+            
+            if (fileInfo.size > 1024 * 1024) {
+                // 压缩图片
+                const compressRes = await new Promise((resolve, reject) => {
+                    uni.compressImage({
+                        src: filePath,
+                        quality: 60, // 压缩质量
+                        success: resolve,
+                        fail: reject
+                    })
+                })
+                filePath = compressRes.tempFilePath
+            }
+            
             const fs = uni.getFileSystemManager()
-            const base64 = fs.readFileSync(item.path, 'base64')
+            const base64 = fs.readFileSync(filePath, 'base64')
             
             const checkRes = await wx.cloud.callFunction({
                 name: 'checkContent',
@@ -166,8 +190,12 @@ const submitReport = async () => {
             }
         }
         
-        // 检查通过后再上传
-        const url = await uploadFile(item.path)
+        // 检查通过后再上传 (上传原始文件或压缩后的文件? 通常上传压缩后的省流量，或者根据需求。这里为了通过审核，上传的也应该是通过审核的那份)
+        // 但用户可能希望保留原图... 
+        // 既然是为了内容安全，如果原图太大导致无法检测，那么应该上传检测过的图片比较安全，或者至少保证原图也是合规的。
+        // 如果这里只压缩用于检测，但上传原图，那么原图可能包含违规细节（虽然概率小，因为压缩只是降低质量）。
+        // 简单起见，上传压缩后的图片（如果有压缩的话），这样也能节省云存储空间和带宽。
+        const url = await uploadFile(filePath)
         
         uploadedFiles.push({
           type: item.type,
@@ -227,6 +255,7 @@ const submitReport = async () => {
 
     const res = await addReport(reportData)
     if (res.code === 200) {
+      userStore.incrementReportCount() // Update local store immediately
       uni.showToast({ title: '打卡成功，等待审核', icon: 'success' })
       mediaList.value = []
       description.value = ''

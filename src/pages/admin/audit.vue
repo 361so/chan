@@ -48,7 +48,6 @@
         </view>
 
         <view class="actions">
-          <button size="mini" type="warn" class="btn delete" @click="handleDelete(item)">删除</button>
           <block v-if="item.status === '0'">
             <button size="mini" type="default" class="btn reject" @click="handleAudit(item, '2')">驳回</button>
             <button size="mini" type="primary" class="btn approve" @click="handleAudit(item, '1')">通过(+{{ getTypePoints(item.type) }}分)</button>
@@ -144,7 +143,12 @@ const handleAudit = (item, status) => {
     editable: true,
     placeholderText: placeholder,
     success: async (res) => {
-      if (res.confirm) {
+      if (status === '2' && !res.content) {
+    uni.showToast({ title: '驳回必须填写理由', icon: 'none' })
+    return
+  }
+  
+  if (res.confirm) {
         try {
           uni.showLoading({ title: '提交中' })
           const auditRes = await request({

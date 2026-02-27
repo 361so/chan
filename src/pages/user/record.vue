@@ -12,13 +12,11 @@
       <view class="list" v-if="recordList.length > 0">
         <view class="item" v-for="(item, index) in recordList" :key="index">
           <view class="left">
-            <view class="type">{{ item.description || '上报获得' }}</view>
             <view class="time">{{ formatDate(item.createTime) }}</view>
+            <view class="desc">上传了 {{ getTypeLabel(item.type) }} 信息</view>
           </view>
           <view class="right">
-            <text class="score add" v-if="item.status === '1'">+10</text>
-            <text class="score pending" v-else-if="item.status === '2'">已驳回</text>
-            <text class="score pending" v-else>审核中</text>
+            <text class="score add">+{{ item.awardedPoints || getTypePoints(item.type) }}</text>
           </view>
         </view>
       </view>
@@ -48,12 +46,13 @@ const formatDate = (dateStr) => {
 const getRecordList = async () => {
   try {
     uni.showLoading({ title: '加载中...' })
-    // 获取全部记录，不筛选 status
+    // 获取积分记录，只显示审核通过的
     const res = await request({
       url: '/system/report/list',
       method: 'GET',
       data: {
         openid: userStore.userInfo.openid, // 显式传递 openid 确保查自己的
+        status: '1', // 仅获取已通过的积分记录
         pageNum: 1,
         pageSize: 20
       }
@@ -66,6 +65,24 @@ const getRecordList = async () => {
   } finally {
     uni.hideLoading()
   }
+}
+
+const getTypeLabel = (type) => {
+  const map = {
+    'beauty': '城市美景',
+    'behavior': '文明行为',
+    'public': '公益行动'
+  }
+  return map[type] || '其他'
+}
+
+const getTypePoints = (type) => {
+  const map = {
+    'beauty': 10,
+    'behavior': 15,
+    'public': 20
+  }
+  return map[type] || 10
 }
 
 onShow(() => {

@@ -35,6 +35,7 @@ exports.main = async (event, context) => {
   if (url.startsWith('/system/report')) {
     if (method === 'POST' && url === '/system/report') return handleAddReport(data, OPENID)
     if (method === 'POST' && url === '/system/report/like') return handleLikeReport(data, OPENID)
+    if (method === 'POST' && url === '/system/report/delete') return handleDeleteReport(data, OPENID) // 允许用户调用删除
     if (method === 'GET' && url.includes('/list')) return handleListReport(data, OPENID)
     if (method === 'GET' && url.includes('/detail')) {
         // 提取 ID: /system/report/detail/{id}
@@ -224,17 +225,32 @@ async function checkAdmin(openid) {
 }
 
 async function handleDeleteReport(data, openid) {
-  const isAdmin = await checkAdmin(openid)
-  if (!isAdmin) {
-    return { code: 403, msg: '无权操作' }
-  }
-  
   const { id } = data
   try {
-    // 1. 删除上报记录
+    // 1. 获取记录
+    const reportRes = await db.collection('reports').doc(id).get()
+    if (!reportRes.data) {
+      return { code: 404, msg: '记录不存在' }
+    }
+    const report = reportRes.data
+
+    // 2. 权限判断
+    const isAdmin = await checkAdmin(openid)
+    
+    // 如果是用户自己删除，必须是待审核状态
+    if (!isAdmin) {
+      if (report.openid !== openid) {
+        return { code: 403, msg: '无权操作' }
+      }
+      if (report.status !== '0') {
+        return { code: 403, msg: '只能删除待审核的记录' }
+      }
+    }
+    
+    // 3. 删除上报记录
     await db.collection('reports').doc(id).remove()
     
-    // 2. 删除相关的点赞记录 (可选，保持数据清洁)
+    // 4. 删除相关的点赞记录 (可选，保持数据清洁)
     try {
         await db.collection('likes').where({ reportId: id }).remove()
     } catch (e) {
@@ -244,7 +260,7 @@ async function handleDeleteReport(data, openid) {
     return { code: 200, msg: '删除成功' }
   } catch (e) {
     console.error('Delete report failed:', e)
-    return { code: 500, msg: '删除失败' }
+    return { code: 500, msg: '删除失败: ' + e.message }
   }
 }
 
@@ -362,7 +378,11 @@ async function handleListReport(query, openid) {
   
   if (query.status === '1') {
       where.status = '1'
-      // 此时不需要强制 openid 过滤
+      // 修正：如果前端显式传了 openid (查某人的/自己的)，则加上 openid 限制
+      // 这样积分记录页面可以只查自己的，而广场/地图不传 openid 则查所有人的
+      if (query.openid) {
+          where.openid = query.openid
+      }
   } else {
       // 默认查看自己的
       const isAdmin = await checkAdmin(openid)
@@ -439,7 +459,8 @@ async function handleAuditReport(data, openid) {
         status: status, // '1'=通过, '2'=驳回
         remark: remark || '',
         auditTime: new Date(),
-        auditor: openid
+        auditor: openid,
+        awardedPoints: status === '1' ? points : 0 // 记录获得的积分
       }
     })
     
@@ -474,9 +495,8 @@ async function handleAdminListReport(data, openid) {
   //   .get()
   
   // 改为查询所有，以便查看历史记录
-  // 可以根据 status 排序，让待审核的排在前面
+  // 按照创建时间倒序排列，最新的在最上面
   const res = await db.collection('reports')
-    .orderBy('status', 'asc') // 0(待审核) -> 1(已通过) -> 2(已驳回)
     .orderBy('createTime', 'desc')
     .get()
     

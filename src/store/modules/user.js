@@ -72,6 +72,14 @@ export const useUserStore = defineStore('user', {
     addPoints(amount) {
       this.points += amount
     },
+    incrementReportCount() {
+      this.reportCount += 1
+    },
+    decrementReportCount() {
+      if (this.reportCount > 0) {
+        this.reportCount -= 1
+      }
+    },
     updateProfile(data) {
       this.userInfo = { ...this.userInfo, ...data }
     },

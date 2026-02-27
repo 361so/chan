@@ -64,9 +64,16 @@
 <script setup>
 import { useUserStore } from '@/store/modules/user'
 import { computed } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import { request, uploadFile } from '@/utils/request'
 
 const userStore = useUserStore()
+
+onShow(() => {
+  if (userStore.isLoggedIn) {
+    userStore.getUserInfo()
+  }
+})
 
 // Share config
 // Removed specific share config to use global mixin, or keep as override if needed. 

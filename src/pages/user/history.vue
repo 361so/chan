@@ -12,22 +12,32 @@
           <view class="row-2">
             <view class="time">{{ formatDate(item.createTime) }}</view>
           </view>
-          <view class="row-3" v-if="item.images">
+          <view class="row-3" v-if="getMediaList(item).length > 0">
             <scroll-view scroll-x="true" class="img-scroll">
               <view class="img-list">
-                <image 
-                  v-for="(img, i) in item.images.split(',')" 
-                  :key="i" 
-                  :src="img" 
-                  mode="aspectFill" 
-                  class="thumb"
-                  @click.stop="previewImage(item.images.split(','), i)"
-                ></image>
+                <block v-for="(media, i) in getMediaList(item)" :key="i">
+                  <image 
+                    v-if="media.type === 'image'"
+                    :src="media.url" 
+                    mode="aspectFill" 
+                    class="thumb"
+                    @click.stop="previewImage(item, i)"
+                  ></image>
+                  <video 
+                    v-else
+                    :src="media.url"
+                    class="thumb"
+                    @click.stop
+                  ></video>
+                </block>
               </view>
             </scroll-view>
           </view>
-          <view class="row-4" v-if="item.remark && item.status == '2'">
-            <text class="remark">驳回原因: {{ item.remark }}</text>
+          <view class="row-4">
+            <text class="remark" v-if="item.remark && item.status == '2'">驳回原因: {{ item.remark }}</text>
+            <view class="actions" v-if="item.status === '0'">
+              <button size="mini" type="warn" class="btn-delete" @click.stop="handleDelete(item)">删除</button>
+            </view>
           </view>
         </view>
       </view>
@@ -96,11 +106,27 @@ const getStatusClass = (status) => {
   return map[status] || ''
 }
 
-const previewImage = (urls, current) => {
-  uni.previewImage({
-    urls,
-    current
-  })
+const getMediaList = (item) => {
+  if (item.media && Array.isArray(item.media)) {
+    return item.media
+  }
+  if (item.images) {
+    return item.images.split(',').map(url => ({ type: 'image', url }))
+  }
+  return []
+}
+
+const previewImage = (item, current) => {
+  const mediaList = getMediaList(item)
+  const media = mediaList[current]
+  
+  if (media.type === 'image') {
+    const urls = mediaList.filter(m => m.type === 'image').map(m => m.url)
+    uni.previewImage({
+      urls,
+      current: media.url
+    })
+  }
 }
 
 const showDetail = (item) => {
@@ -110,14 +136,40 @@ const showDetail = (item) => {
       content: '驳回原因：' + item.remark,
       showCancel: false
     })
-  } else {
-    // 可以添加查看通过详情或其他逻辑
-    const statusText = getStatusText(item.status)
-    uni.showToast({
-      title: '当前状态：' + statusText,
-      icon: 'none'
-    })
   }
+}
+
+const handleDelete = (item) => {
+  uni.showModal({
+    title: '删除确认',
+    content: '确定要删除这条待审核记录吗？',
+    success: async (res) => {
+      if (res.confirm) {
+        try {
+          uni.showLoading({ title: '删除中' })
+          const delRes = await request({
+            url: '/system/report/delete',
+            method: 'POST',
+            data: {
+              id: item._id
+            }
+          })
+          
+          if (delRes.code === 200) {
+            userStore.decrementReportCount() // Update local store
+            uni.showToast({ title: '删除成功' })
+            getHistoryList() // 刷新列表
+          } else {
+            uni.showToast({ title: delRes.msg || '删除失败', icon: 'none' })
+          }
+        } catch (e) {
+          uni.showToast({ title: '删除异常', icon: 'none' })
+        } finally {
+          uni.hideLoading()
+        }
+      }
+    }
+  })
 }
 
 onShow(() => {
@@ -212,10 +264,30 @@ onShow(() => {
         margin-top: 10px;
         padding-top: 10px;
         border-top: 1px solid #f5f5f5;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        min-height: 20px;
         
         .remark {
           font-size: 12px;
           color: #f5222d;
+          flex: 1;
+        }
+        
+        .actions {
+            width: 100%;
+            display: flex;
+            justify-content: flex-end;
+            
+            .btn-delete {
+                margin: 0;
+                font-size: 12px;
+                padding: 0 15px;
+                line-height: 2;
+                background-color: #ff4d4f;
+                color: #fff;
+            }
         }
       }
     }
