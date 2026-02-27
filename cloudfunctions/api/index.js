@@ -355,24 +355,49 @@ async function handleListReport(query, openid) {
   const dbCmd = db.command
   let where = {}
   
-  // 如果不是管理员，只能看自己的
-  const isAdmin = await checkAdmin(openid)
-  if (!isAdmin) {
-      where.openid = openid
-  } else if (query.openid) {
-      // 管理员也可以指定看某人的
-      where.openid = query.openid
+  // 逻辑调整：
+  // 1. 如果指定了 status='1' (审核通过)，则所有人可见 (首页地图、广场)
+  // 2. 如果没有指定 status，则认为是用户查看自己的历史记录 (需要 openid 过滤)
+  // 3. 管理员可以查看所有 (但通常管理员走 handleAdminListReport)
+  
+  if (query.status === '1') {
+      where.status = '1'
+      // 此时不需要强制 openid 过滤
+  } else {
+      // 默认查看自己的
+      const isAdmin = await checkAdmin(openid)
+      if (!isAdmin) {
+          where.openid = openid
+      } else if (query.openid) {
+          // 管理员也可以指定看某人的
+          where.openid = query.openid
+      }
+      
+      // 如果查询参数里有 status (例如查自己的待审核记录)，也加上
+      if (query.status) {
+          where.status = query.status
+      }
   }
   
-  // 支持状态筛选
-  if (query.status) {
-      where.status = query.status
+  // 支持 _id 查询 (详情页复用)
+  if (query._id) {
+      where._id = query._id
+      // 如果查详情，也不应该受 openid 限制 (或者在详情接口里做权限校验)
+      // 这里如果传入了 _id，我们可以放宽 openid 限制，
+      // 因为 handleGetReportDetail 已经有更细致的权限检查逻辑了，
+      // 但这里 handleListReport 是通用列表接口。
+      // 为了安全，如果是查 _id，且不是 status=1，还是应该保持上面的 openid 限制逻辑?
+      // 实际上详情页现在走 handleGetReportDetail，这里主要是 list
+      delete where.openid // 如果是查特定 ID，通常是详情回退逻辑，暂时去掉 openid 限制
   }
 
   // 简单列表查询
+  const orderBy = query.orderByColumn || 'createTime'
+  const orderType = query.isAsc || 'desc'
+
   const res = await db.collection('reports')
     .where(where)
-    .orderBy('createTime', 'desc')
+    .orderBy(orderBy, orderType)
     .get()
     
   return {

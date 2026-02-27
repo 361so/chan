@@ -1,0 +1,9 @@
+{
+  "name": "checkContent",
+  "version": "1.0.0",
+  "description": "微信内容安全审查",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "latest"
+  }
+}

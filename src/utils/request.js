@@ -13,7 +13,7 @@ export const request = (options) => {
       data: {
         url: options.url,
         method: options.method || 'GET',
-        data: options.data || {},
+        data: options.data || options.params || {},
         token: uni.getStorageSync('token') // Pass token if needed
       },
       success: (res) => {

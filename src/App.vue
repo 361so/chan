@@ -1,9 +1,13 @@
 <script>
 import { useUserStore } from '@/store/modules/user'
+import { checkUpdate } from '@/utils/update'
 
 export default {
   onLaunch: function () {
     console.log('App Launch')
+    
+    // 检查更新
+    checkUpdate()
     
     // 初始化云开发环境
     if (wx.cloud) {

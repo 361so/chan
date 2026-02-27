@@ -206,7 +206,7 @@ const previewImage = (item, current) => {
 
 const getTypeLabel = (type) => {
   const map = {
-    'beauty': '社区美景',
+    'beauty': '城市美景',
     'behavior': '文明行为',
     'public': '公益行动'
   }

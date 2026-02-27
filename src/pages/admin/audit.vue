@@ -89,7 +89,7 @@ const getList = async () => {
 
 const getTypeLabel = (type) => {
   const map = {
-    'beauty': '社区美景',
+    'beauty': '城市美景',
     'behavior': '文明行为',
     'public': '公益行动'
   }
@@ -135,7 +135,7 @@ const getMediaList = (item) => {
 
 const handleAudit = (item, status) => {
   const points = getTypePoints(item.type)
-  let content = status === '1' ? `确认审核通过并奖励用户 ${points} 积分？` : '确认驳回该上报？'
+  let content = status === '1' ? `确认审核通过并奖励用户 ${points} 积分` : ''
   let placeholder = status === '2' ? '请输入驳回理由' : '请输入备注(可选)'
   
   uni.showModal({

@@ -82,7 +82,8 @@ onMounted(async () => {
 
 const fetchMarkers = async () => {
   try {
-    const res = await listReport()
+    // 仅获取审核通过的数据 (status=1)
+    const res = await listReport({ status: '1' })
     if (res.code === 200) {
       markers.value = res.rows
         .map(item => {
@@ -136,7 +137,7 @@ const closePopup = () => {
 
 const getTypeLabel = (type) => {
   const map = {
-    'beauty': '社区美景',
+    'beauty': '城市美景',
     'behavior': '文明行为',
     'public': '公益行动'
   }

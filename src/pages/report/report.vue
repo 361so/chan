@@ -57,10 +57,10 @@ const userStore = useUserStore()
 const mediaList = ref([]) // { type: 'image' | 'video', path: '' }
 const description = ref('')
 const submitting = ref(false)
-const reportType = ref('beauty') // 默认社区美景
+const reportType = ref('beauty') // 默认城市美景
 
 const reportTypes = [
-  { label: '社区美景', value: 'beauty' },
+  { label: '城市美景', value: 'beauty' },
   { label: '文明行为', value: 'behavior' },
   { label: '公益行动', value: 'public' }
 ]
@@ -146,17 +146,71 @@ const submitReport = async () => {
     const uploadedFiles = []
     for (const item of mediaList.value) {
       try {
+        // 先检查内容安全 (使用本地文件转 base64)
+        if (item.type === 'image') {
+            const fs = uni.getFileSystemManager()
+            const base64 = fs.readFileSync(item.path, 'base64')
+            
+            const checkRes = await wx.cloud.callFunction({
+                name: 'checkContent',
+                data: {
+                    type: 'image',
+                    imageBase64: base64
+                }
+            })
+            
+            if (checkRes.result.code !== 200) {
+                uni.showToast({ title: '图片包含违规内容', icon: 'none' })
+                submitting.value = false
+                return
+            }
+        }
+        
+        // 检查通过后再上传
         const url = await uploadFile(item.path)
+        
         uploadedFiles.push({
           type: item.type,
           url: url
         })
       } catch (e) {
-        console.error('Upload failed', e)
-        uni.showToast({ title: '文件上传失败', icon: 'none' })
+        console.error('Upload or Check failed', e)
+        // 区分错误类型
+        if (e.message && e.message.includes('FUNCTION_NOT_FOUND')) {
+             uni.showToast({ title: '请先部署云函数 checkContent', icon: 'none' })
+        } else {
+             uni.showToast({ title: '文件上传或审核失败', icon: 'none' })
+        }
         submitting.value = false
         return
       }
+    }
+    
+    // 检查文本内容安全
+    if (description.value) {
+        try {
+            const checkRes = await wx.cloud.callFunction({
+                name: 'checkContent',
+                data: {
+                    type: 'text',
+                    content: description.value
+                }
+            })
+            if (checkRes.result.code !== 200) {
+                uni.showToast({ title: '描述包含违规内容', icon: 'none' })
+                submitting.value = false
+                return
+            }
+        } catch(e) {
+             console.error('Text Check failed', e)
+             if (e.message && e.message.includes('FUNCTION_NOT_FOUND')) {
+                 uni.showToast({ title: '请先部署云函数 checkContent', icon: 'none' })
+             } else {
+                 uni.showToast({ title: '文本审核服务异常', icon: 'none' })
+             }
+             submitting.value = false
+             return
+        }
     }
 
     // 2. Submit report
