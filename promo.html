@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>城市微光 City Glimmer - 记录城市温度</title>
+    <style>
+        :root {
+            --primary: #FF9F43;
+            --primary-light: #FFC078;
+            --secondary: #2C3E50;
+            --bg-gradient: linear-gradient(135deg, #FFF6E5 0%, #FFFFFF 100%);
+            --card-bg: rgba(255, 255, 255, 0.9);
+            --text-main: #2D3436;
+            --text-sub: #636E72;
+            --shadow: 0 10px 30px rgba(255, 159, 67, 0.15);
+            --glimmer-anim: glimmer 3s infinite alternate;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'PingFang SC', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background: var(--bg-gradient);
+            color: var(--text-main);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Background Decorations */
+        .orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            z-index: -1;
+            opacity: 0.6;
+            animation: float 10s infinite ease-in-out;
+        }
+        .orb-1 { width: 300px; height: 300px; background: #FF9F43; top: -50px; right: -50px; }
+        .orb-2 { width: 200px; height: 200px; background: #FFC078; bottom: 10%; left: -50px; animation-delay: -2s; }
+        .orb-3 { width: 150px; height: 150px; background: #FFEAA7; top: 40%; right: 10%; animation-delay: -5s; }
+
+        /* Container */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Hero Section */
+        .hero {
+            min-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 60px 0;
+            position: relative;
+        }
+
+        .hero h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            background: linear-gradient(45deg, #FF9F43, #FF6B6B);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -1px;
+            position: relative;
+        }
+
+        .hero h1::after {
+            content: '✨';
+            font-size: 2rem;
+            position: absolute;
+            top: -10px;
+            right: -20px;
+            animation: var(--glimmer-anim);
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            color: var(--text-sub);
+            max-width: 600px;
+            margin-bottom: 3rem;
+        }
+
+        .qr-card {
+            background: white;
+            padding: 20px;
+            border-radius: 24px;
+            box-shadow: var(--shadow);
+            transform: translateY(0);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .qr-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(255, 159, 67, 0.25);
+        }
+
+        .qr-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.8), transparent);
+            transform: rotate(45deg);
+            animation: shine 3s infinite;
+        }
+
+        .qr-img {
+            width: 220px;
+            height: 220px;
+            object-fit: cover;
+            border-radius: 12px;
+            border: 1px solid #eee;
+        }
+
+        .scan-hint {
+            margin-top: 15px;
+            font-weight: 600;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        /* Features Section */
+        .features {
+            padding: 80px 0;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+        }
+
+        .feature-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            padding: 30px;
+            border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.5);
+            transition: all 0.3s ease;
+        }
+
+        .feature-card:hover {
+            background: white;
+            transform: translateY(-5px);
+            box-shadow: var(--shadow);
+        }
+
+        .icon {
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+            display: inline-block;
+            background: #FFF0D4;
+            padding: 15px;
+            border-radius: 16px;
+        }
+
+        .feature-card h3 {
+            font-size: 1.25rem;
+            margin-bottom: 10px;
+            color: var(--secondary);
+        }
+
+        .feature-card p {
+            color: var(--text-sub);
+            font-size: 0.95rem;
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 40px 0;
+            color: var(--text-sub);
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        /* Animations */
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+
+        @keyframes glimmer {
+            0% { opacity: 0.5; transform: scale(0.8); }
+            100% { opacity: 1; transform: scale(1.2); }
+        }
+
+        @keyframes shine {
+            0% { left: -100%; }
+            20% { left: 100%; }
+            100% { left: 100%; }
+        }
+
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 2.5rem; }
+            .hero p { font-size: 1rem; }
+            .orb { opacity: 0.4; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Decorative Background -->
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+
+    <div class="container">
+        <!-- Hero Section -->
+        <section class="hero">
+            <h1>城市微光</h1>
+            <p>用镜头记录城市温度，让每一份美好被看见。</p>
+            
+            <div class="qr-card">
+                <img src="./gh_81dc25c775c4_258.jpg" alt="城市微光小程序码" class="qr-img">
+                <div class="scan-hint">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"></path><path d="M17 3h2a2 2 0 0 1 2 2v2"></path><path d="M21 17v2a2 2 0 0 1-2 2h-2"></path><path d="M7 21H5a2 2 0 0 1-2-2v-2"></path></svg>
+                    微信扫一扫 加入共建
+                </div>
+            </div>
+        </section>
+
+        <!-- Features Section -->
+        <section class="features">
+            <div class="features-grid">
+                <div class="feature-card">
+                    <span class="icon">📍</span>
+                    <h3>文明地图</h3>
+                    <p>可视化展示城市美好瞬间，发现身边的微光，一键导航打卡地。</p>
+                </div>
+                <div class="feature-card">
+                    <span class="icon">📸</span>
+                    <h3>随手拍</h3>
+                    <p>发现美景、记录文明行为、参与公益行动，随时随地轻松上报。</p>
+                </div>
+                <div class="feature-card">
+                    <span class="icon">🏘️</span>
+                    <h3>文明广场</h3>
+                    <p>浏览全城最新动态，点赞、分享正能量，感受城市的温度。</p>
+                </div>
+                <div class="feature-card">
+                    <span class="icon">🏅</span>
+                    <h3>积分荣誉</h3>
+                    <p>每一次打卡都能赚取积分，兑换专属文明勋章与心意好礼。</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer>
+            <p>© 2024 城市微光 City Glimmer. 让城市更美好。</p>
+        </footer>
+    </div>
+
+</body>
+</html>
