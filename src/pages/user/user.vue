@@ -119,18 +119,67 @@ const changeAvatar = () => {
   
   uni.chooseImage({
     count: 1,
-    success: (res) => {
+    success: async (res) => {
       const filePath = res.tempFilePaths[0]
-      uni.showLoading({ title: '上传中...' })
+      uni.showLoading({ title: '处理中...' })
       
-      // Upload to cloud storage
-      uploadFile(filePath).then(url => {
-        // Update user profile
+      try {
+        // 1. 检查图片安全
+        // 检查图片大小，如果超过 1MB 则压缩
+        let checkPath = filePath
+        const fileInfo = await new Promise((resolve, reject) => {
+            uni.getFileInfo({
+                filePath: checkPath,
+                success: resolve,
+                fail: reject
+            })
+        })
+        
+        if (fileInfo.size > 1024 * 1024) {
+            const compressRes = await new Promise((resolve, reject) => {
+                uni.compressImage({
+                    src: checkPath,
+                    quality: 60,
+                    success: resolve,
+                    fail: reject
+                })
+            })
+            checkPath = compressRes.tempFilePath
+        }
+        
+        const fs = uni.getFileSystemManager()
+        const base64 = fs.readFileSync(checkPath, 'base64')
+        
+        const checkRes = await wx.cloud.callFunction({
+            name: 'checkContent',
+            data: {
+                type: 'image',
+                imageBase64: base64
+            }
+        })
+        
+        if (checkRes.result.code !== 200) {
+            uni.hideLoading()
+            uni.showToast({ title: '头像包含违规内容', icon: 'none' })
+            return
+        }
+        
+        // 2. 上传图片
+        uni.showLoading({ title: '上传中...' })
+        const url = await uploadFile(filePath) // 上传原图或压缩图均可，这里传原图
+        
+        // 3. 更新用户信息
         updateUserInfo({ avatarUrl: url })
-      }).catch(err => {
+        
+      } catch (e) {
         uni.hideLoading()
-        uni.showToast({ title: '上传失败', icon: 'none' })
-      })
+        console.error(e)
+        if (e.message && e.message.includes('FUNCTION_NOT_FOUND')) {
+             uni.showToast({ title: '请先部署云函数 checkContent', icon: 'none' })
+        } else {
+             uni.showToast({ title: '操作失败', icon: 'none' })
+        }
+      }
     }
   })
 }
@@ -143,9 +192,41 @@ const changeNickName = () => {
     editable: true,
     placeholderText: '请输入新昵称',
     content: userStore.userInfo.nickName,
-    success: (res) => {
+    success: async (res) => {
       if (res.confirm && res.content) {
-        updateUserInfo({ nickName: res.content })
+        const newName = res.content.trim()
+        
+        // 长度限制
+        if (newName.length < 2 || newName.length > 12) {
+            uni.showToast({ title: '昵称长度需在 2-12 字之间', icon: 'none' })
+            return
+        }
+        
+        uni.showLoading({ title: '检测中...' })
+        
+        try {
+            // 内容安全检测
+            const checkRes = await wx.cloud.callFunction({
+                name: 'checkContent',
+                data: {
+                    type: 'text',
+                    content: newName
+                }
+            })
+            
+            if (checkRes.result.code !== 200) {
+                uni.hideLoading()
+                uni.showToast({ title: '昵称包含违规内容', icon: 'none' })
+                return
+            }
+            
+            // 更新
+            updateUserInfo({ nickName: newName })
+            
+        } catch(e) {
+            uni.hideLoading()
+            uni.showToast({ title: '检测失败', icon: 'none' })
+        }
       }
     }
   })
