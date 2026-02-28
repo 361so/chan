@@ -15,7 +15,7 @@
       </cover-view>
     </map>
     
-    <!-- 详情弹窗 -->
+    <!-- 详情弹窗 - 放在map外面避免被cover-view遮挡 -->
     <view class="marker-popup" v-if="currentMarker" @click.stop>
       <view class="popup-content">
         <view class="popup-header">
@@ -102,7 +102,6 @@ const fetchMarkers = async () => {
             id: Math.abs(numId), // Ensure positive ID
             latitude: parseFloat(item.latitude),
             longitude: parseFloat(item.longitude),
-            title: item.status === '1' ? '已清理' : '待清理',
             iconPath: item.status === '1' ? '/static/tabbar/report_active.png' : '/static/tabbar/report.png',
             width: 30,
             height: 30,
@@ -318,16 +317,16 @@ onShareTimeline((res) => {
 }
 
 .marker-popup {
-  position: absolute;
+  position: fixed;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
+  right: 0;
+  bottom: 0;
   background: rgba(0,0,0,0.5);
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 999;
+  z-index: 9999;
   
   .popup-content {
     width: 80%;

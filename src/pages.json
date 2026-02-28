@@ -56,6 +56,12 @@
 			}
 		},
 		{
+			"path": "pages/user/shop",
+			"style": {
+				"navigationBarTitleText": "积分兑换"
+			}
+		},
+		{
 			"path": "pages/user/about",
 			"style": {
 				"navigationBarTitleText": "关于我们"

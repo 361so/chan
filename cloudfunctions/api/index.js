@@ -73,6 +73,16 @@ exports.main = async (event, context) => {
     return handleUpdateUser(data, OPENID)
   }
 
+  // 10. 商品列表
+  if (url === '/shop/list') {
+      return handleGetProductList(data)
+  }
+
+  // 11. 兑换商品
+  if (url === '/shop/redeem') {
+      return handleRedeemProduct(data, OPENID)
+  }
+
   return {
     code: 404,
     msg: 'Not Found: ' + url
@@ -428,15 +438,85 @@ async function handleListReport(query, openid) {
 }
 
 async function handleRank(url) {
-    // 简单的模拟排行
-    const res = await db.collection('users')
-        .orderBy('points', 'desc')
-        .limit(10)
-        .get()
+    const type = url.split('/').pop() // 'week', 'month', 'total'
+    
+    // 总榜：直接查 users 表的 points 字段
+    if (type === 'total') {
+        const res = await db.collection('users')
+            .orderBy('points', 'desc')
+            .limit(20)
+            .get()
+        return {
+            code: 200,
+            rows: res.data
+        }
+    }
+
+    // 周榜/月榜：聚合 reports 表
+    let startDate = new Date()
+    startDate.setHours(0, 0, 0, 0)
+    
+    if (type === 'week') {
+        // 本周一
+        const day = startDate.getDay() || 7
+        startDate.setDate(startDate.getDate() - day + 1)
+    } else if (type === 'month') {
+        // 本月1号
+        startDate.setDate(1)
+    } else {
+        // 默认总榜
+        const res = await db.collection('users')
+            .orderBy('points', 'desc')
+            .limit(20)
+            .get()
+        return {
+            code: 200,
+            rows: res.data
+        }
+    }
+    
+    const $ = db.command.aggregate
+    try {
+        const res = await db.collection('reports')
+            .aggregate()
+            .match({
+                status: '1',
+                auditTime: _.gte(startDate)
+            })
+            .group({
+                _id: '$openid',
+                points: $.sum('$awardedPoints')
+            })
+            .sort({
+                points: -1
+            })
+            .limit(20)
+            .lookup({
+                from: 'users',
+                localField: '_id',
+                foreignField: 'openid',
+                as: 'userInfo'
+            })
+            .end()
+            
+        // 格式化返回数据
+        const rows = res.list.map(item => {
+            const user = (item.userInfo && item.userInfo[0]) || {}
+            return {
+                openid: item._id,
+                points: item.points,
+                nickName: user.nickName || '微信用户',
+                avatarUrl: user.avatarUrl || ''
+            }
+        })
         
-    return {
-        code: 200,
-        rows: res.data
+        return {
+            code: 200,
+            rows: rows
+        }
+    } catch (e) {
+        console.error('Rank aggregation failed:', e)
+        return { code: 500, msg: '获取榜单失败' }
     }
 }
 
@@ -504,4 +584,113 @@ async function handleAdminListReport(data, openid) {
     code: 200,
     rows: res.data
   }
+}
+
+// --- Shop Handlers ---
+
+const PRODUCTS = [
+    {
+        id: 'badge_001',
+        name: '文明大使',
+        description: '热心参与城市文明建设的先行者',
+        price: 100,
+        type: 'badge',
+        icon: '/static/badges/badge_001.png', // 需前端对应资源
+        color: '#FFD700'
+    },
+    {
+        id: 'badge_002',
+        name: '环保小卫士',
+        description: '守护环境，从点滴做起',
+        price: 200,
+        type: 'badge',
+        icon: '/static/badges/badge_002.png',
+        color: '#32CD32'
+    },
+    {
+        id: 'badge_003',
+        name: '美好家园守护者',
+        description: '为社区美好贡献力量的守护神',
+        price: 500,
+        type: 'badge',
+        icon: '/static/badges/badge_003.png',
+        color: '#1E90FF'
+    },
+    {
+        id: 'badge_004',
+        name: '城市之光',
+        description: '照亮城市每一个角落的榜样力量',
+        price: 1000,
+        type: 'badge',
+        icon: '/static/badges/badge_004.png',
+        color: '#FF4500'
+    }
+]
+
+async function handleGetProductList(data) {
+    return {
+        code: 200,
+        rows: PRODUCTS
+    }
+}
+
+async function handleRedeemProduct(data, openid) {
+    const { productId } = data
+    const dbCmd = db.command
+    
+    // 1. 查找商品
+    const product = PRODUCTS.find(p => p.id === productId)
+    if (!product) {
+        return { code: 404, msg: '商品不存在' }
+    }
+    
+    try {
+        const transaction = await db.runTransaction(async transaction => {
+            // 2. 获取用户信息 (积分, 已拥有勋章)
+            const userRes = await transaction.collection('users').where({ openid }).get()
+            if (userRes.data.length === 0) {
+                await transaction.rollback('用户不存在')
+            }
+            const user = userRes.data[0]
+            
+            // 3. 检查是否已拥有
+            if (user.badges && user.badges.includes(productId)) {
+                await transaction.rollback('您已拥有该勋章')
+            }
+            
+            // 4. 检查积分是否足够
+            if ((user.points || 0) < product.price) {
+                await transaction.rollback('积分不足')
+            }
+            
+            // 5. 扣除积分并添加勋章
+            await transaction.collection('users').doc(user._id).update({
+                data: {
+                    points: dbCmd.inc(-product.price),
+                    badges: dbCmd.push(productId)
+                }
+            })
+            
+            // 6. 记录兑换日志 (可选)
+            await transaction.collection('redemptions').add({
+                data: {
+                    openid,
+                    productId,
+                    productName: product.name,
+                    price: product.price,
+                    createTime: new Date()
+                }
+            })
+            
+            return {
+                pointsLeft: (user.points || 0) - product.price
+            }
+        })
+        
+        return { code: 200, msg: '兑换成功', data: transaction }
+        
+    } catch (e) {
+        console.error('Redeem failed:', e)
+        return { code: 500, msg: e.message || '兑换失败' }
+    }
 }
