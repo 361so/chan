@@ -297,9 +297,9 @@ onShareAppMessage((res) => {
       font-size: 12px;
       padding: 2px 8px;
       border-radius: 10px;
-      &.beauty { background: #e1f5fe; color: #0288d1; }
-      &.behavior { background: #fff3e0; color: #f57c00; }
-      &.public { background: #f3e5f5; color: #7b1fa2; }
+      &.beauty {background: #fff2e8;color: #fa8c16;}
+      &.behavior {background: #e6f7ff;color: #1890ff;}
+      &.public {background: #f6ffed;color: #52c41a;}
     }
   }
   

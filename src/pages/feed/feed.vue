@@ -170,9 +170,9 @@ const getList = async () => {
 
 const getTypeLabel = (type) => {
   const map = {
-    'beauty': '美景',
-    'behavior': '文明',
-    'public': '公益'
+    'beauty': '城市美景',
+    'behavior': '文明行为',
+    'public': '公益行动'
   }
   return map[type] || '其他'
 }
@@ -451,20 +451,9 @@ page {
     border-radius: 12px;
     font-weight: 500;
     
-    &.beauty {
-      background: #fff2e8;
-      color: #fa8c16;
-    }
-    
-    &.behavior {
-      background: #e6f7ff;
-      color: #1890ff;
-    }
-    
-    &.public {
-      background: #f6ffed;
-      color: #52c41a;
-    }
+    &.beauty {background: #fff2e8;color: #fa8c16;}
+    &.behavior {background: #e6f7ff;color: #1890ff;}
+    &.public {background: #f6ffed;color: #52c41a;}
   }
 }
 

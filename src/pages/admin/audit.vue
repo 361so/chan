@@ -7,6 +7,12 @@
           <view class="status-tag" :class="getStatusClass(item.status)">{{ getStatusText(item.status) }}</view>
         </view>
         
+        <!-- 发布者信息 -->
+        <view class="publisher-row">
+          <image class="publisher-avatar" :src="item.avatarUrl || '/static/images/icon.png'" mode="aspectFill"></image>
+          <text class="publisher-name">{{ item.nickName || '微信用户' }}</text>
+        </view>
+        
         <view class="row-1">
           <view class="desc">{{ item.description || '无描述' }}</view>
           <view class="time">{{ formatDate(item.createTime) }}</view>
@@ -261,9 +267,9 @@ onShow(() => {
       background: #e0e0e0;
       color: #666;
       
-      &.beauty { background: #e1f5fe; color: #0288d1; }
-      &.behavior { background: #fff3e0; color: #f57c00; }
-      &.public { background: #f3e5f5; color: #7b1fa2; }
+      &.beauty {background: #fff2e8;color: #fa8c16;}
+      &.behavior {background: #e6f7ff;color: #1890ff;}
+      &.public {background: #f6ffed;color: #52c41a;}
     }
     
     .status-tag {
@@ -273,6 +279,25 @@ onShow(() => {
       &.pending { color: #ff9800; }
       &.success { color: #4caf50; }
       &.reject { color: #f44336; }
+    }
+  }
+  
+  .publisher-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+    
+    .publisher-avatar {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      margin-right: 8px;
+      background: #f0f0f0;
+    }
+    
+    .publisher-name {
+      font-size: 13px;
+      color: #666;
     }
   }
   

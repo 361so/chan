@@ -28,7 +28,7 @@
 		{
 			"path": "pages/rank/rank",
 			"style": {
-				"navigationBarTitleText": "光荣榜"
+				"navigationBarTitleText": "积分榜"
 			}
 		},
 		{

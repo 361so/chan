@@ -94,22 +94,12 @@ exports.main = async (event, context) => {
 async function handleGetReportDetail(id, openid) {
   try {
     console.log('Querying report with ID:', id, 'Type:', typeof id)
-    
-    // 调试：先查一条看看结构
-    // const debugRes = await db.collection('reports').limit(1).get()
-    // if (debugRes.data.length > 0) {
-    //    console.log('Sample report _id:', debugRes.data[0]._id, 'Type:', typeof debugRes.data[0]._id)
-    // }
 
     // 直接尝试 where 查询
     const listRes = await db.collection('reports').where({ _id: id }).get()
     
     if (listRes.data.length === 0) {
         console.log('Report not found for ID:', id)
-        // 调试：尝试列出所有 ID 进行对比（仅调试用，生产环境慎用）
-        // const allRes = await db.collection('reports').field({_id: true}).get()
-        // console.log('All report IDs:', allRes.data.map(item => item._id))
-        
         return { code: 404, msg: '记录不存在' }
     }
     
@@ -135,13 +125,27 @@ async function handleGetReportDetail(id, openid) {
         isLiked = likeRes.total > 0
     } catch (e) {
         console.warn('Check like status failed (likes collection might not exist):', e)
-        // 忽略错误，默认为未点赞
+    }
+    
+    // 查询用户信息获取昵称和头像
+    let nickName = '微信用户'
+    let avatarUrl = ''
+    try {
+        const userRes = await db.collection('users').where({ openid: report.openid }).get()
+        if (userRes.data.length > 0) {
+            nickName = userRes.data[0].nickName || '微信用户'
+            avatarUrl = userRes.data[0].avatarUrl || ''
+        }
+    } catch (e) {
+        console.warn('Get user info failed:', e)
     }
     
     return {
       code: 200,
       data: {
           ...report,
+          nickName: nickName,
+          avatarUrl: avatarUrl,
           isLiked: isLiked
       }
     }
@@ -388,37 +392,25 @@ async function handleListReport(query, openid) {
   
   if (query.status === '1') {
       where.status = '1'
-      // 修正：如果前端显式传了 openid (查某人的/自己的)，则加上 openid 限制
-      // 这样积分记录页面可以只查自己的，而广场/地图不传 openid 则查所有人的
       if (query.openid) {
           where.openid = query.openid
       }
   } else {
-      // 默认查看自己的
       const isAdmin = await checkAdmin(openid)
       if (!isAdmin) {
           where.openid = openid
       } else if (query.openid) {
-          // 管理员也可以指定看某人的
           where.openid = query.openid
       }
       
-      // 如果查询参数里有 status (例如查自己的待审核记录)，也加上
       if (query.status) {
           where.status = query.status
       }
   }
   
-  // 支持 _id 查询 (详情页复用)
   if (query._id) {
       where._id = query._id
-      // 如果查详情，也不应该受 openid 限制 (或者在详情接口里做权限校验)
-      // 这里如果传入了 _id，我们可以放宽 openid 限制，
-      // 因为 handleGetReportDetail 已经有更细致的权限检查逻辑了，
-      // 但这里 handleListReport 是通用列表接口。
-      // 为了安全，如果是查 _id，且不是 status=1，还是应该保持上面的 openid 限制逻辑?
-      // 实际上详情页现在走 handleGetReportDetail，这里主要是 list
-      delete where.openid // 如果是查特定 ID，通常是详情回退逻辑，暂时去掉 openid 限制
+      delete where.openid
   }
 
   // 简单列表查询
@@ -429,11 +421,40 @@ async function handleListReport(query, openid) {
     .where(where)
     .orderBy(orderBy, orderType)
     .get()
+  
+  // 获取所有上报记录的作者 openid 列表
+  const openids = [...new Set(res.data.map(item => item.openid).filter(Boolean))]
+  
+  // 批量查询用户信息
+  let userMap = {}
+  if (openids.length > 0) {
+      try {
+          const userRes = await db.collection('users').where({
+              openid: dbCmd.in(openids)
+          }).get()
+          userMap = userRes.data.reduce((map, user) => {
+              map[user.openid] = user
+              return map
+          }, {})
+      } catch (e) {
+          console.warn('Get users info failed:', e)
+      }
+  }
+  
+  // 合并用户信息到上报记录
+  const rows = res.data.map(item => {
+      const user = userMap[item.openid] || {}
+      return {
+          ...item,
+          nickName: user.nickName || '微信用户',
+          avatarUrl: user.avatarUrl || ''
+      }
+  })
     
   return {
     code: 200,
-    rows: res.data,
-    total: res.data.length
+    rows: rows,
+    total: rows.length
   }
 }
 
@@ -568,21 +589,43 @@ async function handleAdminListReport(data, openid) {
     return { code: 403, msg: '无权操作' }
   }
   
-  // 查询待审核的
-  // const res = await db.collection('reports')
-  //   .where({ status: '0' })
-  //   .orderBy('createTime', 'desc')
-  //   .get()
-  
-  // 改为查询所有，以便查看历史记录
   // 按照创建时间倒序排列，最新的在最上面
   const res = await db.collection('reports')
     .orderBy('createTime', 'desc')
     .get()
+  
+  // 获取所有上报记录的作者 openid 列表
+  const openids = [...new Set(res.data.map(item => item.openid).filter(Boolean))]
+  
+  // 批量查询用户信息
+  let userMap = {}
+  if (openids.length > 0) {
+      try {
+          const userRes = await db.collection('users').where({
+              openid: db.command.in(openids)
+          }).get()
+          userMap = userRes.data.reduce((map, user) => {
+              map[user.openid] = user
+              return map
+          }, {})
+      } catch (e) {
+          console.warn('Get users info failed:', e)
+      }
+  }
+  
+  // 合并用户信息到上报记录
+  const rows = res.data.map(item => {
+      const user = userMap[item.openid] || {}
+      return {
+          ...item,
+          nickName: user.nickName || '微信用户',
+          avatarUrl: user.avatarUrl || ''
+      }
+  })
     
   return {
     code: 200,
-    rows: res.data
+    rows: rows
   }
 }
 

@@ -170,9 +170,9 @@ const goToReport = () => {
 
 const getTypeLabel = (type) => {
   const map = {
-    'beauty': '美景',
-    'behavior': '文明',
-    'public': '公益'
+    'beauty': '城市美景',
+    'behavior': '文明行为',
+    'public': '公益行动'
   }
   return map[type] || '其他'
 }

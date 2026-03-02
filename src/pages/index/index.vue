@@ -9,17 +9,18 @@
       :scale="16"
       show-location
       @markertap="handleMarkerTap"
-    >
-      <cover-view class="reset-location" @click="resetLocation">
-        <cover-image class="icon" src="/static/images/dingwei.png"></cover-image>
-      </cover-view>
-    </map>
+    ></map>
+    
+    <!-- 定位按钮 - 放在map外面避免遮挡popup -->
+    <view class="reset-location" @click="resetLocation">
+      <image class="icon" src="/static/images/dingwei.png"></image>
+    </view>
     
     <!-- 详情弹窗 - 放在map外面避免被cover-view遮挡 -->
     <view class="marker-popup" v-if="currentMarker" @click.stop>
       <view class="popup-content">
         <view class="popup-header">
-          <text class="popup-title">{{ getTypeLabel(currentMarker.type) }}</text>
+          <text class="popup-title" :class="currentMarker.type">{{ getTypeLabel(currentMarker.type) }}</text>
           <text class="close-btn" @click="closePopup">×</text>
         </view>
         <swiper class="popup-swiper" v-if="getMediaList(currentMarker).length > 0" indicator-dots>
@@ -238,7 +239,7 @@ onShareTimeline((res) => {
 
 .reset-location {
   position: absolute;
-  bottom: 40px;
+  top: 50%; transform: translateY(-50%);
   right: 20px;
   width: 40px;
   height: 40px;
@@ -344,6 +345,9 @@ onShareTimeline((res) => {
       .popup-title {
         font-weight: bold;
         font-size: 16px;
+        &.beauty {color: #fa8c16;}
+        &.behavior {color: #1890ff;}
+        &.public {color: #52c41a;}
       }
       
       .close-btn {
